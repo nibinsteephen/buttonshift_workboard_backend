@@ -1,9 +1,13 @@
 import requests
 import json
 
-from workboard.models import Workboard,Task
-from .serializers import LoginSerializer, UserDetailsSerializer
+from django.db.models import Q
+
 from django.contrib.auth.models import User
+
+from workboard.models import Workboard,Task
+from .serializers import LoginSerializer, UserDetailsSerializer,workboardSerializer
+
 
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import AllowAny, IsAuthenticated
@@ -80,3 +84,33 @@ def user_login(request):
         }
 
     return Response(response_data, status=status.HTTP_200_OK)
+
+
+@api_view(['GET'])
+@permission_classes([AllowAny])
+def Workboards(request):
+    
+    current_user = request.user
+    if Workboard.objects.filter(Q(created_by=current_user) | Q(task__assigned_to=current_user)).distinct().exists():
+        user_workboard = Workboard.objects.filter(Q(created_by=current_user) | Q(task__assigned_to=current_user)).distinct()
+        serialized_data = workboardSerializer(user_workboard, many=True, context={'request': request})
+        
+        response_data = {
+            "StatusCode": 6000,
+            "data": {
+                'title': 'Success',
+                'users': serialized_data.data,
+            }
+        }
+    else:
+        response_data = {
+            "StatusCode": 6001,
+            "message": "Workboard does not exist",
+        }
+
+    return Response(response_data, status=status.HTTP_200_OK)
+    
+    
+    
+
+    

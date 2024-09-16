@@ -5,4 +5,5 @@ app_name = 'api_v1_workboard'
 
 urlpatterns = [
     re_path(r'^login/$',views.user_login,name="user_login"),
+    re_path(r'^Workboards/$',views.Workboards,name="Workboards"),
 ]

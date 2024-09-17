@@ -6,7 +6,7 @@ from django.db.models import Q
 from django.contrib.auth.models import User
 
 from workboard.models import Workboard,Task
-from .serializers import LoginSerializer, UserDetailsSerializer,workboardSerializer
+from .serializers import LoginSerializer, UserDetailsSerializer, workboardSerializer, CreateWorkboardSerializer, AddTaskSerializer
 
 
 from rest_framework.decorators import api_view, permission_classes
@@ -87,7 +87,7 @@ def user_login(request):
 
 
 @api_view(['GET'])
-@permission_classes([AllowAny])
+@permission_classes([IsAuthenticated])
 def Workboards(request):
     
     current_user = request.user
@@ -109,8 +109,235 @@ def Workboards(request):
         }
 
     return Response(response_data, status=status.HTTP_200_OK)
-    
-    
-    
 
+
+@api_view(['POST']) 
+@permission_classes([IsAuthenticated])
+def create_workboard(request):
+    """
+    view for creating a workboard including task
+    """
     
+    current_user = request.user
+    serialized_data = CreateWorkboardSerializer(data=request.data)
+    
+    if serialized_data.is_valid():
+        title = request.data.get('title')
+        description = request.data.get('description')
+        tasks = request.data.get('tasks')
+        
+        if isinstance(tasks, str):
+            tasks = json.loads(tasks)
+        
+        new_workboard = Workboard.objects.create(
+            title = title,
+            description = description,
+            created_by = current_user
+        )
+       
+        if tasks:
+            for task in tasks:           
+                new_task = Task.objects.create(
+                    title = task['title'],
+                    description = task['description'],
+                    workboard = new_workboard,
+                    created_by = current_user,
+                    status = task.get('status', None)  
+                )
+
+                assigned_users = task.get('assigned_to',[])
+                if assigned_users:
+                    user_objects = User.objects.filter(id__in=assigned_users)
+                    new_task.assigned_to.add(*user_objects)
+                    
+                new_task.save()
+                
+        response_data = {
+            'StatuCode': 6000,
+            'data': {
+                'title': 'Success',
+                'message': 'Workboard created successfully',
+            }
+        }
+    else:
+        response_data = {
+            'StatusCode': 6001,
+            'message': 'Invalid data',
+            'data': serialized_data.errors
+        }
+    return Response(response_data, status=status.HTTP_200_OK)
+    
+    
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def assign_users_list(request):
+    """
+    view for getting list of users
+    """
+    if User.objects.all().exclude(is_superuser=True).exists():
+        
+        users = User.objects.all().exclude(is_superuser=True)
+        serialized_data = UserDetailsSerializer(users, many=True)
+
+        response_data = {
+            'StatusCode': 6000,
+            'title': {
+                'title': 'Success',
+                'data': serialized_data.data
+            }
+        }
+    else:
+        response_data = {
+            'StatusCode': 6001,
+            'message': 'Users does not exist',
+        }
+    return Response(response_data, status=status.HTTP_200_OK)
+
+
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def add_task(request):
+    """
+    view for adding task in workboard page
+    """
+    current_user = request.user
+    
+    serialized_data = AddTaskSerializer(data=request.data)
+    
+    if serialized_data.is_valid():
+    
+        title = request.data.get('title')
+        description = request.data.get('description')
+        workboard_id = request.data.get('workboard_id')
+        assigned_to = request.data.get('assigned_to')
+        task_status = request.data.get('status')
+        
+        if isinstance(assigned_to, str):
+                assigned_to = json.loads(assigned_to)
+                
+        if workboard_id:
+            if Workboard.objects.filter(pk=workboard_id).exists():
+                workboard = Workboard.objects.get(pk=workboard_id)
+            else:
+                workboard = None
+        
+            new_task = Task.objects.create(
+                title = title,
+                description = description,
+                workboard = workboard,
+                created_by = current_user,
+                status = task_status
+            )
+        
+            if assigned_to:
+                user_objects = User.objects.filter(id__in=assigned_to)
+                new_task.assigned_to.add(*user_objects)
+        
+            new_task.save()
+            
+            response_data = {
+                'StatusCode': 6000,
+                'data': {
+                    'title': 'Success',
+                    'message': 'Task created successfully',
+                }
+            }
+        else:
+            response_data ={
+                'StatusCode': 6001,
+                'message': 'Workboard does not exist',
+            }
+    else:
+        response_data = {
+            'StatusCode': 6001,
+            'message': 'Invalid data',
+            'data': serialized_data.errors
+        }
+        
+    return Response(response_data, status=status.HTTP_200_OK)
+
+
+# @api_view(['POST'])
+# @permission_classes([IsAuthenticated])
+# def edit_task(request):
+#     """
+#     view for adding task in workboard page
+#     """
+#     current_user = request.user
+    
+#     task_id = request.data.get('task_id')
+#     title = request.data.get('title')
+#     description = request.data.get('description')
+#     assigned_to = request.data.get('assigned_to')
+#     task_status = request.data.get('status')
+    
+#     if isinstance(assigned_to, str):
+#             assigned_to = json.loads(assigned_to)
+            
+#     if task_id:
+#         if Task.objects.filter(pk=task_id).exists():
+#             task = Task.objects.get(pk=task_id)
+                    
+#             task.title = title
+#             task.description = description
+#             task.status = task_status
+        
+#             if assigned_to:
+#                 user_objects = User.objects.filter(id__in=assigned_to)
+#                 task.assigned_to.set(*user_objects)
+        
+#             task.save()
+            
+#             response_data = {
+#                 'StatusCode': 6000,
+#                 'data': {
+#                     'title': 'Success',
+#                     'message': 'Task created successfully',
+#                 }
+#             }
+#         else:
+#             response_data = {
+#                 'StatusCode': 6001,
+#                 'message': 'Task does not exist',
+#             }
+#     else:
+#         response_data = {
+#             'StatusCode': 6001,
+#             'message': 'Task id not found',
+#         }
+        
+#     return Response(response_data, status=status.HTTP_200_OK)
+
+
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def edit_task(request):
+    """
+    view for adding task in workboard page
+    """
+    
+    task_id = request.POST.get('task_id')
+    
+    if Task.objects.filter(pk=task_id).exists():
+        task = Task.objects.get(pk=task_id)
+                    
+        serializer = AddTaskSerializer(task, data=request.data, partial=True)
+        
+        if serializer.is_valid():
+            serializer.update(serializer.instance, serializer.validated_data)
+            
+        response_data = {
+            'StatusCode': 6000,
+            'data': {
+                'title': 'Success',
+                'message': 'Task Updated successfully',
+                'data': serializer.data
+            }
+        }
+    else:
+        response_data = {
+            'StatusCode': 6001,
+            'message': 'Task does not exist',
+        }
+        
+    return Response(response_data, status=status.HTTP_200_OK)

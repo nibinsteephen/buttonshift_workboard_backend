@@ -6,4 +6,8 @@ app_name = 'api_v1_workboard'
 urlpatterns = [
     re_path(r'^login/$',views.user_login,name="user_login"),
     re_path(r'^Workboards/$',views.Workboards,name="Workboards"),
+    re_path(r'^create-workboard/$',views.create_workboard,name="create_workboard"),
+    re_path(r'^assign-users-list/$',views.assign_users_list,name="assign_users_list"),
+    re_path(r'^add-task/$',views.add_task,name="add_task"),
+    re_path(r'^edit-task/$',views.edit_task,name="edit_task"),
 ]

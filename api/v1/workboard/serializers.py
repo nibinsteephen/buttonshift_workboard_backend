@@ -1,3 +1,5 @@
+import json
+
 from rest_framework import serializers
 
 from django.contrib.auth.models import User
@@ -53,3 +55,33 @@ class workboardSerializer(serializers.ModelSerializer):
                 users_name.append(user.get_full_name())
                 
         return users_name
+    
+class CreateWorkboardSerializer(serializers.Serializer):
+    title = serializers.CharField()
+    description = serializers.CharField()
+
+class AddTaskSerializer(serializers.Serializer):
+    title = serializers.CharField()
+    description = serializers.CharField(required=False)
+    workboard_id = serializers.CharField()
+    assigned_to = serializers.CharField()
+    status = serializers.CharField()
+    
+    def update(self, instance, validated_data):
+        instance.title = validated_data.get('title', instance.title)
+        instance.description = validated_data.get('description', instance.description)
+        instance.workboard_id = validated_data.get('workboard', instance.workboard_id)
+        instance.status = validated_data.get('status', instance.status)
+        
+        assigned_to = validated_data.get('assigned_to')
+        
+        if isinstance(assigned_to, str):
+             assigned_to = json.loads(assigned_to)
+             
+        if assigned_to:
+            user_objects = User.objects.filter(id__in=assigned_to)
+            if user_objects.exists():
+                instance.assigned_to.set(user_objects)
+        
+        instance.save()
+        return instance

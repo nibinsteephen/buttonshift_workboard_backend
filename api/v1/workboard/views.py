@@ -257,58 +257,6 @@ def add_task(request):
     return Response(response_data, status=status.HTTP_200_OK)
 
 
-# @api_view(['POST'])
-# @permission_classes([IsAuthenticated])
-# def edit_task(request):
-#     """
-#     view for adding task in workboard page
-#     """
-#     current_user = request.user
-    
-#     task_id = request.data.get('task_id')
-#     title = request.data.get('title')
-#     description = request.data.get('description')
-#     assigned_to = request.data.get('assigned_to')
-#     task_status = request.data.get('status')
-    
-#     if isinstance(assigned_to, str):
-#             assigned_to = json.loads(assigned_to)
-            
-#     if task_id:
-#         if Task.objects.filter(pk=task_id).exists():
-#             task = Task.objects.get(pk=task_id)
-                    
-#             task.title = title
-#             task.description = description
-#             task.status = task_status
-        
-#             if assigned_to:
-#                 user_objects = User.objects.filter(id__in=assigned_to)
-#                 task.assigned_to.set(*user_objects)
-        
-#             task.save()
-            
-#             response_data = {
-#                 'StatusCode': 6000,
-#                 'data': {
-#                     'title': 'Success',
-#                     'message': 'Task created successfully',
-#                 }
-#             }
-#         else:
-#             response_data = {
-#                 'StatusCode': 6001,
-#                 'message': 'Task does not exist',
-#             }
-#     else:
-#         response_data = {
-#             'StatusCode': 6001,
-#             'message': 'Task id not found',
-#         }
-        
-#     return Response(response_data, status=status.HTTP_200_OK)
-
-
 @api_view(['POST'])
 @permission_classes([IsAuthenticated])
 def edit_task(request):

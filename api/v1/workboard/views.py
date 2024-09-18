@@ -54,11 +54,11 @@ def user_login(request):
                 if response.status_code == 200:
                         response_data = {
                             'StatusCode': 6000,
+                            'message': 'Login Success',
                             'data': {
                                 'title': 'Success',
                                 'response': response.json(),
-                                'user-details' : serializers.data,
-
+                                'userDetails' : serializers.data,
                             }
                         }
                 else:
@@ -89,7 +89,9 @@ def user_login(request):
 @api_view(['GET'])
 @permission_classes([IsAuthenticated])
 def Workboards(request):
-    
+    """
+    views for showing all workboard wither created by the user of assigned to the user
+    """
     current_user = request.user
     if Workboard.objects.filter(Q(created_by=current_user) | Q(task__assigned_to=current_user)).distinct().exists():
         user_workboard = Workboard.objects.filter(Q(created_by=current_user) | Q(task__assigned_to=current_user)).distinct()
@@ -99,13 +101,40 @@ def Workboards(request):
             "StatusCode": 6000,
             "data": {
                 'title': 'Success',
-                'users': serialized_data.data,
+                'workboard': serialized_data.data,
             }
         }
     else:
         response_data = {
             "StatusCode": 6001,
             "message": "Workboard does not exist",
+        }
+
+    return Response(response_data, status=status.HTTP_200_OK)
+
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def workboard_tasks(request,workboard_id):
+    """
+    views for showing tasks of each workboard
+    """
+
+    if Task.objects.filter(workboard__id=workboard_id,is_deleted=False).exists():
+        task = Task.objects.filter(workboard__id=workboard_id,is_deleted=False)
+        serialized_data = AddTaskSerializer(task, many=True, context={'request': request})
+        
+        response_data = {
+            "StatusCode": 6000,
+            "data": {
+                'title': 'Success',
+                'tasks': serialized_data.data,
+            }
+        }
+    else:
+        response_data = {
+            "StatusCode": 6001,
+            "message": "No task found",
         }
 
     return Response(response_data, status=status.HTTP_200_OK)
@@ -147,7 +176,9 @@ def create_workboard(request):
 
                 assigned_users = task.get('assigned_to',[])
                 if assigned_users:
-                    user_objects = User.objects.filter(id__in=assigned_users)
+                    print(assigned_users,"AAAAAAAAAASSSSSSSSSSSSSSSSSSSSSSS")
+                    user_ids = [user['id'] for user in assigned_users]
+                    user_objects = User.objects.filter(id__in=user_ids)
                     new_task.assigned_to.add(*user_objects)
                     
                 new_task.save()
@@ -176,12 +207,12 @@ def assign_users_list(request):
     """
     if User.objects.all().exclude(is_superuser=True).exists():
         
-        users = User.objects.all().exclude(is_superuser=True)
+        users = User.objects.all().exclude(is_superuser=True).order_by('first_name')
         serialized_data = UserDetailsSerializer(users, many=True)
 
         response_data = {
             'StatusCode': 6000,
-            'title': {
+            'data': {
                 'title': 'Success',
                 'data': serialized_data.data
             }
@@ -288,4 +319,26 @@ def edit_task(request):
             'message': 'Task does not exist',
         }
         
+    return Response(response_data, status=status.HTTP_200_OK)
+
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def workboard_details(request, workboard_id):
+    if Workboard.objects.filter(pk=workboard_id).exists():
+        workboard = Workboard.objects.get(pk=workboard_id)
+        
+        response_data = {
+            'StatusCode': 6000,
+            'data': {
+                'title': 'Success',
+                'workboard_title': workboard.title,
+                'workboard_description': workboard.description
+            }
+        }
+    else:
+        response_data = {
+            'StatusCode': 6001,
+            'message': 'Workboard does not exist',
+        }
     return Response(response_data, status=status.HTTP_200_OK)

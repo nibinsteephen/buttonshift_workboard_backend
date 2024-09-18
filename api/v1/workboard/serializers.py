@@ -30,11 +30,13 @@ class UserDetailsSerializer(serializers.ModelSerializer):
     
 class workboardSerializer(serializers.ModelSerializer):
     users_list = serializers.SerializerMethodField()
+    number_of_tasks = serializers.SerializerMethodField()
     class Meta:
         model = Workboard
         fields = (
             'id',
             'title',
+            'number_of_tasks',
             'users_list'
         )
         
@@ -56,6 +58,13 @@ class workboardSerializer(serializers.ModelSerializer):
                 
         return users_name
     
+    def get_number_of_tasks(self, instance):
+        if Task.objects.filter(workboard=instance,is_deleted=False).exists():
+            task_count = Task.objects.filter(workboard=instance,is_deleted=False).count()
+        else:
+            task_count = 0
+        return task_count
+    
 class CreateWorkboardSerializer(serializers.Serializer):
     title = serializers.CharField()
     description = serializers.CharField()
@@ -67,6 +76,14 @@ class AddTaskSerializer(serializers.Serializer):
     assigned_to = serializers.CharField()
     status = serializers.CharField()
     
+    
+    assigned_users_name = serializers.SerializerMethodField()
+    # def to_representation(self, instance):
+    #     representation = super().to_representation(instance)
+    #     assigned_to_users = instance.assigned_to.values_list('id', flat=True)
+    #     representation['assigned_to'] = list(assigned_to_users) 
+    #     return representation
+    
     def update(self, instance, validated_data):
         instance.title = validated_data.get('title', instance.title)
         instance.description = validated_data.get('description', instance.description)
@@ -76,8 +93,7 @@ class AddTaskSerializer(serializers.Serializer):
         assigned_to = validated_data.get('assigned_to')
         
         if isinstance(assigned_to, str):
-             assigned_to = json.loads(assigned_to)
-             
+            assigned_to = json.loads(assigned_to)
         if assigned_to:
             user_objects = User.objects.filter(id__in=assigned_to)
             if user_objects.exists():
@@ -85,3 +101,10 @@ class AddTaskSerializer(serializers.Serializer):
         
         instance.save()
         return instance
+
+    def get_assigned_users_name(self, instance):
+        users_name = []
+        if instance.assigned_to.exists():
+            for user in instance.assigned_to.all():
+                users_name.append(user.get_full_name())
+        return users_name

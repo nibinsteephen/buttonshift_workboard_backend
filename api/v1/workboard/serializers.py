@@ -78,11 +78,8 @@ class AddTaskSerializer(serializers.Serializer):
     
     
     assigned_users_name = serializers.SerializerMethodField()
-    # def to_representation(self, instance):
-    #     representation = super().to_representation(instance)
-    #     assigned_to_users = instance.assigned_to.values_list('id', flat=True)
-    #     representation['assigned_to'] = list(assigned_to_users) 
-    #     return representation
+    assigned_users_id = serializers.SerializerMethodField()
+    task_id = serializers.SerializerMethodField()
     
     def update(self, instance, validated_data):
         instance.title = validated_data.get('title', instance.title)
@@ -94,6 +91,7 @@ class AddTaskSerializer(serializers.Serializer):
         
         if isinstance(assigned_to, str):
             assigned_to = json.loads(assigned_to)
+            
         if assigned_to:
             user_objects = User.objects.filter(id__in=assigned_to)
             if user_objects.exists():
@@ -108,3 +106,16 @@ class AddTaskSerializer(serializers.Serializer):
             for user in instance.assigned_to.all():
                 users_name.append(user.get_full_name())
         return users_name
+    
+    def get_assigned_users_id(self, instance):
+        users_id = []
+        if instance.assigned_to.exists():
+            for user in instance.assigned_to.all():
+                users_id.append({
+                    "id":user.id,
+                    "full_name":user.get_full_name()
+                })
+        return users_id
+    
+    def get_task_id(self, instance):
+        return instance.id

@@ -176,7 +176,6 @@ def create_workboard(request):
 
                 assigned_users = task.get('assigned_to',[])
                 if assigned_users:
-                    print(assigned_users,"AAAAAAAAAASSSSSSSSSSSSSSSSSSSSSSS")
                     user_ids = [user['id'] for user in assigned_users]
                     user_objects = User.objects.filter(id__in=user_ids)
                     new_task.assigned_to.add(*user_objects)
@@ -184,7 +183,7 @@ def create_workboard(request):
                 new_task.save()
                 
         response_data = {
-            'StatuCode': 6000,
+            'StatusCode': 6000,
             'data': {
                 'title': 'Success',
                 'message': 'Workboard created successfully',
@@ -261,7 +260,8 @@ def add_task(request):
             )
         
             if assigned_to:
-                user_objects = User.objects.filter(id__in=assigned_to)
+                user_ids = [user['id'] for user in assigned_to]
+                user_objects = User.objects.filter(id__in=user_ids)
                 new_task.assigned_to.add(*user_objects)
         
             new_task.save()
@@ -295,7 +295,8 @@ def edit_task(request):
     view for adding task in workboard page
     """
     
-    task_id = request.POST.get('task_id')
+    task_id = request.data.get('task_id')
+    print(task_id,"TASKKKK ID")
     
     if Task.objects.filter(pk=task_id).exists():
         task = Task.objects.get(pk=task_id)
